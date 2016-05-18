@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>图片预览</title>
+</head>
+
+<body>
+<input type="file" name="imageFile" id="imageFile" multiple>
+<div id="div">
+</div>
+</body>
+<script>
+(function(){
+	var file=document.getElementById('imageFile'),
+	div=document.getElementById('div');
+	file.addEventListener('change',function(e){
+		var files=file.files;
+		var f,img;		
+		for(var i=0;i<files.length;i++){
+			//alert(files[i].name+"\n"+files[i].type+"\n"+(files[i].size/1024).toFixed(2));
+			var f=files[i];
+			if(!f.type.toLowerCase().match(/image.*/)){continue;}
+			var reader=new FileReader();
+			reader.readAsDataURL(f);
+			reader.addEventListener('load',function(e){
+				//alert(e.target.result);
+				img=document.createElement('img');
+				img.title=f.name;
+				img.src=e.target.result;
+				img.alt=f.name;
+				div.appendChild(img);
+			});
+			
+		}
+		
+		
+		//alert(files.length);
+	},false);
+
+})();
+
+</script>
+</html>
