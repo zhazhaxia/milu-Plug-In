@@ -3,12 +3,12 @@
 
 ---
 
-##上传文件插件
+### 上传文件插件
 *具体描述在uploadFile/下面*
 
 ---
 
-##鼠标轮滑滚动插件
+### 鼠标轮滑滚动插件
 **如何使用**
 ```js
 var scrollpanel = require('lib/scrollpanel');
