@@ -15,3 +15,7 @@ var scrollpanel = require('lib/scrollpanel');
 scrollpanel.init('.youPanel');//youPanel是那个需要做滚动效果的外部容器的class
 ```
 使用的测试页面在 [zhazhaxai音效系统](http://zhazhaxia.github.io/public/)
+
+---
+
+
