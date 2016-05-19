@@ -1,2 +1,9 @@
-# milu-Plug-In
-some plug-in that I built
+#milu-Plug-In
+**日常开发的时候写的几个不大兼容的插件，练习用**
+
+##上传文件插件
+*具体描述在uploadFile/下面*
+
+##鼠标轮滑滚动插件
+
+
