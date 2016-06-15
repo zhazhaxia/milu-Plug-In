@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>彩色的马赛克</title>
+</head>
+
+<body>
+<video id="video" width="640" height="480" autoplay></video>
+<canvas id="canvas" width="640" height="480"></canvas>
+</body>
+<script>
+	
+		var aVideo=document.getElementById('video');
+		var aCanvas=document.getElementById('canvas');
+		var ctx=aCanvas.getContext('2d');
+		var speed=30;//每帧时间
+		var w=aCanvas.width;
+		var h=aCanvas.height;
+		//获取摄像头对象
+		navigator.getUserMedia  = getMyUserMedia()
+		navigator.getUserMedia({video:true}, gotStream, noStream)
+		function getMyUserMedia(){
+			return navigator.getUserMedia ||
+			navigator.webkitGetUserMedia ||
+			navigator.mozGetUserMedia ||
+			navigator.msGetUserMedia
+		}
+      	
+		//将摄像头放进video
+		function gotStream(stream) {
+			video.src = URL.createObjectURL(stream);
+			video.onerror = function () {
+			  stream.stop();
+			};
+			stream.onended = noStream;
+			video.onloadedmetadata = function () {
+			  console.log('摄像头成功打开！');
+			};
+		}
+		//不存在显示错误信息
+		function noStream(err) {
+       	 	alert(err);
+      }
+	//投影到canvas
+	//进行灰度转换
+	setInterval(function(){
+			ctx.drawImage(aVideo, 0, 0)
+			
+			var imgData=ctx.getImageData(0,0,w,h)
+			//alert(imgData.width)
+			convertToGray(imgData,h,w)
+			ctx.putImageData(imgData,0,0)
+			//alert(getDataPixels(imgData,100,100))
+		},speed);
+	
+	//灰度转换函数
+	function convertToGray(oImg,row,col){
+		var box=10;//马赛克大小
+		
+		for(var i=0;i<row;i=i+box){
+			for(var j=0;j<col;j=j+box){				
+				var d=getDataPixels(oImg,i,j)
+				for(var m=i;m<i+box;m++){
+					for(var n=j;n<j+box;n++){					
+						setDataPixels(oImg,m,n,d)
+					}
+				}
+				
+				
+			}
+		}
+			
+	}
+	//获取某行某列的像素值
+	function getDataPixels(oImg,row,col){
+		
+		var arr=[];
+		var w=oImg.width
+		var i=(row*w+col)*4
+		arr[0]=oImg.data[i]//r红0-255
+		arr[1]=oImg.data[i+1]//g绿0-255
+		arr[2]=oImg.data[i+2]//b蓝0-255
+		arr[3]=oImg.data[i+3]//alpha透明度0-255，255不透明0，全透明
+		return arr
+	}
+	//设置某行某列的像素值
+	function setDataPixels(oImg,row,col,arr){
+		//alert(arr)
+		var w=oImg.width
+		var i=(row*w+col)*4
+		oImg.data[i]=arr[0]
+		oImg.data[i+1]=arr[1]
+		oImg.data[i+2]=arr[2]
+		oImg.data[i+3]=arr[3]	
+	}
+
+
+</script>
+</html>

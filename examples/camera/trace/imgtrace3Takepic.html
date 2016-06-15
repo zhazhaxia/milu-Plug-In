@@ -1,0 +1,402 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>图像追踪</title>
+</head>
+<style>
+*{marginJ:0;padding:0;}
+#main{ position:relative;}
+canvas{border:1px solid black;}
+#ball{ position:absolute; top:2px; right:2px; border:solid 1px black;}
+</style>
+<body>
+<div id="main">
+    <p>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>  
+    <canvas id="ball" width="640" height="480"></canvas><br>
+    <input type="button" id="btn1" value="采集1">
+    <canvas id="pic1" width="640" height="480"></canvas><br>
+    <input type="button" id="btn2" value="采集2">
+    <canvas id="pic2" width="640" height="480"></canvas><br>
+    <input type="button" id="btn3" value="提取背景">
+    <canvas id="pic3" width="640" height="480"></canvas>
+</div>
+</body>
+<script>
+	
+	var aVideo=document.getElementById('video');
+	var aCanvas=document.getElementById('canvas');
+	var ballCanvas=document.getElementById('ball')
+	var ball=ballCanvas.getContext('2d')
+	var ctx=aCanvas.getContext('2d');
+	var speed=30;//每帧时间
+	var box=10//图片正方形区域块
+	var threshold=70//阈值
+	var w=aCanvas.width;//宽，列
+	var h=aCanvas.height;//高，行
+	var bw=ballCanvas.width;
+	var bh=ballCanvas.height;
+	var oldArr=new Array();//上一副图的数组
+	var emptyOldArr=true;//旧图是否有值
+	var position={x:100,y:100}//移动位置点
+	var countGray=0//计算box区域
+	drawBall(position,20,bw,bh)//绘制小圆球
+	initArr(oldArr,h)//初始化一个二维数组
+	
+	var btn1=document.getElementById('btn1')
+	var btn2=document.getElementById('btn2')
+	var btn3=document.getElementById('btn3')
+	var p1=document.getElementById('pic1')
+	var p2=document.getElementById('pic2')
+	var p3=document.getElementById('pic3')
+	var p1ctx=p1.getContext('2d')
+	var p2ctx=p2.getContext('2d')
+	var p3ctx=p3.getContext('2d')
+	
+	btn1.addEventListener('click',function(){//获取第一帧图像
+		takePic(p1ctx)
+	})
+	btn2.addEventListener('click',function(){//获取第二帧图像
+		takePic(p2ctx)
+	})
+	function takePic(obj){//根据具体的canvas对象拍照并绘制到canvas上
+		var imgData=ctx.getImageData(0,0,w,h)	
+		redrawCanvas(imgData,oldArr,h,w)
+		obj.putImageData(imgData,0,0)	
+	}
+	
+	btn3.addEventListener('click',function(){//提取背景
+		var imgd1=p1ctx.getImageData(0,0,w,h)
+		var imgd2=p2ctx.getImageData(0,0,w,h)
+		var imgd3=p3ctx.getImageData(0,0,w,h)
+		//alert(imgd1.data.length)
+		var subArr=subImgData(imgd1,imgd2)//返回新图的数组
+		
+		/***************************************************/
+		
+		var c=0;
+		var x1,y1
+		var sum=0//计算移动的位置
+		for(i=0;i<h;i=i+box){
+			for(j=0;j<w;j=j+box){	
+				//如果大于阈值			
+				if(subArr[i][j]>threshold){
+					//计算大于阈值的数目，进行比较
+					for(var k=i;k<i+box;k++){
+						for(var l=j;l<j+box;l++){
+							if(subArr[k][l]>threshold){
+								sum++	
+							}
+						}
+					}//嵌套for结束
+					if(sum>40){
+						c=sum
+						x1=i
+						y1=j
+						
+					}
+					sum=0
+					
+				}//嵌套if结束
+			}
+		}
+		var xstart,xstop,ystart,ystop
+		xstart=(x1-50)>0?(x1-50):0
+		xstop=(x1+50)>w?w:(x1+50)
+		ystart=(y1-50)>0?(y1-50):0
+		ystop=(y1+50)>h?h:(y1+50)
+		//alert(xstart+'-'+xstop+'-'+ystart+'-'+ystop)
+	/*	for(var i=xstart;i<xstop;i++){
+			for(var j=ystart;j<ystop;j++){
+				subArr[i][j]=255;
+			}
+		}*/
+		
+		
+		/***************************************************/
+		
+		
+		var c=0;
+			var x2,y2
+			var sum=0//计算移动的位置
+			for(i=0;i<h;i=i+box){
+				for(j=0;j<w;j=j+box){	
+					//如果大于阈值			
+					if(subArr[i][j]>threshold){
+						//计算大于阈值的数目，进行比较
+						for(var k=i;k<i+box;k++){
+							for(var l=j;l<j+box;l++){
+								if(subArr[k][l]>threshold){
+									sum++	
+								}
+							}
+						}//嵌套for结束
+						if(sum>40){
+							c=sum
+							x2=i
+							y2=j
+							
+						}
+						sum=0
+						
+					}//嵌套if结束
+				}
+			}
+			var xstart,xstop,ystart,ystop
+			xstart=(x2-50)>0?(x2-50):0
+			xstop=(x2+50)>w?w:(x2+50)
+			ystart=(y2-50)>0?(y2-50):0
+			ystop=(y2+50)>h?h:(y2+50)
+			//alert(xstart+'-'+xstop+'-'+ystart+'-'+ystop)
+			/*for(var i=xstart;i<xstop;i++){
+				for(var j=ystart;j<ystop;j++){
+					subArr[i][j]=255;
+				}
+			}*/
+		
+		/***************************************************/
+			
+		subArr=imageSeal(imgd1,imgd2,x1,y1)	
+		
+		redrawCanvas(imgd3,subArr,h,w)
+		p3ctx.putImageData(imgd3,0,0)
+	})
+	//图像印章
+	function imageSeal(imgd1,imgd2,x1,y1){
+		var dArr1=changeToArray(imgd1,h,w)
+		var dArr2=changeToArray(imgd2,h,w)
+		//var d1=new Array()
+//		initArr(d1,h)
+//		concatArr(d1,dArr1,h,w)
+//		alert(d1)
+		//var  i=400
+		//alert(dArr1[i])
+		
+		var xstart=0,xstop=0,ystart=0,ystop=0
+		xstart=(x1-200)>0?(x1-200):0;
+		xstop=(x1+200)>h?h:(x1+200);
+		ystart=(y1-200)>0?(y1-200):0;
+		ystop=(y1+200)>w?w:(y1+200);
+		//alert(dataArr1[100][100])
+		//alert(xstart+'-'+xstop+'-'+ystart+'-'+ystop)
+		
+		//alert(typeof xstart)
+		//alert(typeof xstop)
+		
+		var tmp=70
+		
+		for(var i=xstart;i<xstop;i++){
+			for(var j=ystart;j<ystop;j++){
+				//alert(dataArr1[i][j]+'-'+dataArr2[i][j])
+				tmp=dArr2[i][j]
+				dArr1[i][j]=tmp
+				//alert(dataArr1[i][j]+'-'+dataArr2[i][j])
+			}
+		}
+		
+		
+		return dArr1
+	}
+	//图像相减
+	function subImgData(imgd1,imgd2){
+		var dataArr1=changeToArray(imgd1,h,w)
+		var dataArr2=changeToArray(imgd2,h,w)
+		var resultArr=arrSub(dataArr1,dataArr2,h,w)
+		return resultArr
+	}
+	//两个数组相减并返回结果，数组结构应相同。后两个参数行列
+	function arrSub(arr1,arr2,r,c){
+		var newArr=new Array()
+		initArr(newArr,arr1.length)
+		
+		for(var i=0;i<r;i++){
+			for(var j=0;j<c;j++){
+				var t=0;
+				t=arr1[i][j]-arr2[i][j]
+				newArr[i][j]=(t>0?t:-t)>threshold?255:0
+			}
+		}
+		return newArr
+	}
+	//提取图像生成图像的二维数组
+	function changeToArray(oImg,row,col){
+		var data=oImg.data
+		var len=data.length
+		var pixels=len/4
+		var dataArr=new Array()
+		//生成二维数组	
+		initArr(dataArr,row)
+		for(var i=0;i<pixels;i++){
+			var r=data[i*4]
+			dataArr[Math.floor(i/col)][i%col]=r
+		}
+		return dataArr
+	}
+	
+	
+	//获取摄像头对象
+		navigator.getUserMedia  = getMyUserMedia()
+		navigator.getUserMedia({video:true}, gotStream, noStream)
+		function getMyUserMedia(){
+			return navigator.getUserMedia ||
+			navigator.webkitGetUserMedia ||
+			navigator.mozGetUserMedia ||
+			navigator.msGetUserMedia
+		}
+      	
+		//将摄像头放进video
+		function gotStream(stream) {
+			video.src = URL.createObjectURL(stream);
+			video.onerror = function () {
+			  stream.stop();
+			};
+			stream.onended = noStream;
+			video.onloadedmetadata = function () {
+			  console.log('摄像头成功打开！');
+			};
+		}
+		//不存在显示错误信息
+		function noStream(err) {
+       	 	alert(err);
+      }
+	  
+	 
+	  
+	  
+	//投影到canvas
+	//进行灰度转换
+	setInterval(function(){
+			ctx.drawImage(aVideo, 0, 0)
+			
+			var imgData=ctx.getImageData(0,0,w,h)
+			//alert(imgData.width)
+			imageDeal(imgData,h,w)
+			ctx.putImageData(imgData,0,0)
+			//alert(getDataPixels(imgData,100,100))
+		},speed);	
+	//图像处理
+	function imageDeal(oImg,row,col){
+		var dataArr=changeToGray(oImg,row,col)//获取灰度数组
+		if(!emptyOldArr){//图像相减//进行前后采集的两幅图片相减操作
+			imgDel(dataArr,oldArr,row,col)
+		}else{		
+			concatArr(oldArr,dataArr,row,col)	
+			emptyOldArr=false
+		}
+		var sum=0//计算移动的位置
+		for(i=0;i<row;i=i+box){
+			for(j=0;j<col;j=j+box){	
+				//如果大于阈值			
+				if(dataArr[i][j]>threshold){
+					//计算大于阈值的数目，进行比较
+					for(var k=i;k<i+box;k++){
+						for(var l=j;l<j+box;l++){
+							if(dataArr[k][l]>threshold){
+								sum++	
+							}
+						}
+					}//嵌套for结束
+					if(sum>50){
+						countGray=sum
+						position.x=i
+						position.y=j
+					}
+					sum=0
+					
+				}//嵌套if结束
+			}
+		}
+		countGray=0
+		drawBall(position,20,bw,bh)
+		redrawCanvas(oImg,dataArr,row,col)//重绘画布
+	}
+	//xx重绘画布
+	function redrawCanvas(img,arr,row,col){
+		for(var i=0;i<row;i++){
+			for(var j=0;j<col;j++){
+				var d=arr[i][j]
+				setDataPixels(img,i,j,new Array(d,d,d,255))					
+			}
+		}
+	}
+	//灰度转换函数,取每个像素,转为灰度值
+	function changeToGray(oImg,row,col){
+		var data=oImg.data
+		var len=data.length
+		var pixels=len/4
+		var dataArr=new Array()
+		//生成二维数组	
+		initArr(dataArr,row)
+		for(var i=0;i<pixels;i++){
+			var r=data[i*4]
+			var g=data[i*4+1]
+			var b=data[i*4+2]
+			//转为灰度
+			var gray=parseInt((11*r+16*g+5*b)/32)
+			dataArr[Math.floor(i/col)][i%col]=gray
+		}
+		return dataArr
+	}
+	//图像相减并二值化
+	function imgDel(dataArr,oldArr,row,col){
+		for(i=0;i<row;i++){
+			for(j=0;j<col;j++){
+				var t=dataArr[i][j]-oldArr[i][j]
+				oldArr[i][j]=dataArr[i][j]
+				t=t<0?-t:t
+				t=t>threshold?255:0	
+				dataArr[i][j]=t
+			}
+		}
+	}
+	//数组间非引用传递赋值
+	function concatArr(arr1,arr2,r,c){
+		for(var i=0;i<r;i++){
+			for(var j=0;j<c;j++){
+				arr1[i][j]=arr2[i][j]		
+			}
+		}
+	}
+	//获取某行某列的像素值
+	function getDataPixels(oImg,row,col){
+		
+		var arr=[];
+		var w=oImg.width
+		var i=(row*w+col)*4
+		arr[0]=oImg.data[i]//r红0-255
+		arr[1]=oImg.data[i+1]//g绿0-255
+		arr[2]=oImg.data[i+2]//b蓝0-255
+		arr[3]=oImg.data[i+3]//alpha透明度0-255，255不透明0，全透明
+		return arr
+	}
+	//设置某行某列的像素值
+	function setDataPixels(oImg,row,col,arr){
+		//alert(arr)
+		var w=oImg.width
+		var i=(row*w+col)*4
+		oImg.data[i]=arr[0]
+		oImg.data[i+1]=arr[1]
+		oImg.data[i+2]=arr[2]
+		oImg.data[i+3]=arr[3]	
+	}
+	//绘制圆形
+	function drawBall(bpos,bradius,bw,bh){
+		ball.clearRect(0,0,bw,bh)
+		ball.fillStyle='red'
+		ball.beginPath()
+		ball.arc(bpos.y,bpos.x,bradius,0,Math.PI*2,1)
+		ball.closePath()
+		ball.fill()
+		//alert(bpos.x+':'+bpos.y)
+	}
+	//初始化二维数组
+	function initArr(arr,h){
+		for(var i=0;i<h;i++){//生成二维数组
+			arr[i]=new Array()
+		}
+	}
+
+</script>
+</html>

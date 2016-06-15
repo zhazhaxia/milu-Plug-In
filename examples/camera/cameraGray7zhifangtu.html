@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>二值化</title>
+</head>
+
+<body>
+<video id="video" width="640" height="480" autoplay></video>
+<canvas id="canvas" width="640" height="480"></canvas>
+</body>
+<script>
+	
+		var aVideo=document.getElementById('video');
+		var aCanvas=document.getElementById('canvas');
+		var ctx=aCanvas.getContext('2d');
+		var speed=30;//每帧时间
+		var w=aCanvas.width;
+		var h=aCanvas.height;
+		//获取摄像头对象
+		navigator.getUserMedia  = getMyUserMedia()
+		navigator.getUserMedia({video:true}, gotStream, noStream)
+		function getMyUserMedia(){
+			return navigator.getUserMedia ||
+			navigator.webkitGetUserMedia ||
+			navigator.mozGetUserMedia ||
+			navigator.msGetUserMedia
+		}
+      	
+		//将摄像头放进video
+		function gotStream(stream) {
+			video.src = URL.createObjectURL(stream);
+			video.onerror = function () {
+			  stream.stop();
+			};
+			stream.onended = noStream;
+			video.onloadedmetadata = function () {
+			  console.log('摄像头成功打开！');
+			};
+		}
+		//不存在显示错误信息
+		function noStream(err) {
+       	 	alert(err);
+      }
+	//投影到canvas
+	//进行灰度转换
+	setInterval(function(){
+			ctx.drawImage(aVideo, 0, 0)
+			
+			var imgData=ctx.getImageData(0,0,w,h)
+			//alert(imgData.width)
+			convertToGray(imgData,h,w)
+			ctx.putImageData(imgData,0,0)
+			//alert(getDataPixels(imgData,100,100))
+		},speed);
+	
+	//灰度转换函数
+	function convertToGray(oImg,row,col){
+		var data=oImg.data
+		var len=data.length
+		var pixels=len/4
+		var box=1;
+		var dataArr=new Array()
+		for(var i=0;i<row;i++){
+			dataArr[i]=new Array()
+		}
+		for(var i=0;i<pixels;i++){
+			var r=data[i*4]
+			var g=data[i*4+1]
+			var b=data[i*4+2]
+			//转为灰度
+			var gray=parseInt((11*r+16*g+5*b)/32)
+			dataArr[Math.floor(i/col)].push(gray)
+		}
+		
+		histogram(dataArr,row,col)
+		
+		for(i=0;i<row;i=i+box){
+			for(j=0;j<col;j=j+box){
+				var d=dataArr[i][j]
+				setDataPixels(oImg,i,j,new Array(d,d,d,255))
+				
+				
+			}
+		}
+			
+	}
+	function histogram(img,row,col){
+		var total=row*col
+		var range=255
+		var px=new Array()
+		var pro=new Array()
+		var output=new Array()
+		var cumulatePro=new Array()
+		for(var i=0;i<range+1;i++){
+			px[i]=0
+			pro[i]=0
+			output[i]=0
+			cumulatePro[i]=0
+		}
+		for(var i=0;i<row;i++){
+			for(var j=0;j<col;j++){
+				var d=img[i][j]
+				px[d]++
+			}
+		}
+		for(var i=0;i<range+1;i++){
+			pro[i]=px[i]/total
+		}
+		
+		cumulatePro[0]=pro[0]
+		for(var i=1;i<range+1;i++){
+			cumulatePro[i]=pro[i]+cumulatePro[i-1]
+		}
+		
+
+		for(var i=0;i<range+1;i++){
+			output[i]=cumulatePro[i]*range
+		}
+		
+		for(var i=0;i<row;i++){
+			for(var j=0;j<col;j++){
+				img[i][j]=output[img[i][j]]
+			}
+		}
+			
+	}
+	//获取某行某列的像素值
+	function getDataPixels(oImg,row,col){
+		
+		var arr=[];
+		var w=oImg.width
+		var i=(row*w+col)*4
+		arr[0]=oImg.data[i]//r红0-255
+		arr[1]=oImg.data[i+1]//g绿0-255
+		arr[2]=oImg.data[i+2]//b蓝0-255
+		arr[3]=oImg.data[i+3]//alpha透明度0-255，255不透明0，全透明
+		return arr
+	}
+	//设置某行某列的像素值
+	function setDataPixels(oImg,row,col,arr){
+		//alert(arr)
+		var w=oImg.width
+		var i=(row*w+col)*4
+		oImg.data[i]=arr[0]
+		oImg.data[i+1]=arr[1]
+		oImg.data[i+2]=arr[2]
+		oImg.data[i+3]=arr[3]	
+	}
+
+
+</script>
+</html>

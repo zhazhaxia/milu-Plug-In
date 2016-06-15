@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>图像追踪</title>
+</head>
+<style>
+#main{ position:relative;}
+#ball{ position:absolute; top:2px; right:2px; border:solid 1px black;}
+</style>
+<body>
+<div id="main">
+    <p>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <canvas id="ball" width="640" height="480"></canvas>
+</div>
+</body>
+<script>
+	
+		var aVideo=document.getElementById('video');
+		var aCanvas=document.getElementById('canvas');
+		var ballCanvas=document.getElementById('ball')
+		var ball=ballCanvas.getContext('2d')
+		var ctx=aCanvas.getContext('2d');
+		var speed=30;//每帧时间
+		var box=10//图片正方形区域块
+		var threshold=70//阈值
+		var w=aCanvas.width;
+		var h=aCanvas.height;
+		var bw=ballCanvas.width;
+		var bh=ballCanvas.height;
+		var oldArr=new Array();//上一副图的数组
+		var emptyOldArr=true;//旧图是否有值
+		var position={x:100,y:100}//移动位置点
+		var countGray=0//计算box区域
+		//初始化
+		/*ball.fillStyle='red'
+		ball.fillRect(100,100,100,100)
+		ball.beginPath()
+		ball.arc(200,200,20,0,Math.PI*2,false)
+		ball.fill()*/
+		drawBall(position,20,bw,bh)
+		for(var i=0;i<h;i++){//生成二维数组
+			oldArr[i]=new Array()
+		}
+		//绘制圆形
+		function drawBall(bpos,bradius,bw,bh){
+			ball.clearRect(0,0,bw,bh)
+			ball.fillStyle='red'
+			ball.beginPath()
+			ball.arc(bpos.y,bpos.x,bradius,0,Math.PI*2,1)
+			ball.closePath()
+			ball.fill()
+			//alert(bpos.x+':'+bpos.y)
+		}
+		
+		//获取摄像头对象
+		navigator.getUserMedia  = getMyUserMedia()
+		navigator.getUserMedia({video:true}, gotStream, noStream)
+		function getMyUserMedia(){
+			return navigator.getUserMedia ||
+			navigator.webkitGetUserMedia ||
+			navigator.mozGetUserMedia ||
+			navigator.msGetUserMedia
+		}
+      	
+		//将摄像头放进video
+		function gotStream(stream) {
+			video.src = URL.createObjectURL(stream);
+			video.onerror = function () {
+			  stream.stop();
+			};
+			stream.onended = noStream;
+			video.onloadedmetadata = function () {
+			  console.log('摄像头成功打开！');
+			};
+		}
+		//不存在显示错误信息
+		function noStream(err) {
+       	 	alert(err);
+      }
+	//投影到canvas
+	//进行灰度转换
+	setInterval(function(){
+			ctx.drawImage(aVideo, 0, 0)
+			
+			var imgData=ctx.getImageData(0,0,w,h)
+			//alert(imgData.width)
+			convertToGray(imgData,h,w)
+			ctx.putImageData(imgData,0,0)
+			//alert(getDataPixels(imgData,100,100))
+		},speed);
+	
+	//灰度转换函数
+	function convertToGray(oImg,row,col){
+		
+		var data=oImg.data
+		var len=data.length
+		var pixels=len/4
+		
+		
+		var dataArr=new Array()
+		for(var i=0;i<row;i++){//生成二维数组
+			dataArr[i]=new Array()
+		}
+		//取每个像素
+		for(var i=0;i<pixels;i++){
+			var r=data[i*4]
+			var g=data[i*4+1]
+			var b=data[i*4+2]
+			//转为灰度
+			var gray=parseInt((11*r+16*g+5*b)/32)
+			dataArr[Math.floor(i/col)].push(gray)
+		}
+		
+		if(emptyOldArr){
+			concatArr(oldArr,dataArr,row,col)	
+			emptyOldArr=false
+		}else{		
+			for(i=0;i<row;i++){
+				for(j=0;j<col;j++){
+					var t=dataArr[i][j]-oldArr[i][j]
+					oldArr[i][j]=dataArr[i][j]
+					t=t<0?-t:t
+					t=t>threshold?255:0	
+					dataArr[i][j]=t
+				}
+			}
+		}
+		//alert(oldArr)
+		//alert(dataArr)
+		//计算移动的位置
+		var sum=0
+		
+		for(i=0;i<row;i=i+box){
+			for(j=0;j<col;j=j+box){				
+				if(dataArr[i][j]>threshold){
+					//计算大于阈值的数目，进行比较
+					for(var k=i;k<i+box;k++){
+						for(var l=j;l<j+box;l++){
+							if(dataArr[k][l]>threshold){
+								sum++	
+							}
+						}
+					}//嵌套for结束
+					if(sum>50){
+						countGray=sum
+						position.x=i
+						position.y=j
+					}
+					sum=0
+					
+				}//嵌套if结束
+			}
+		}
+		countGray=0
+		drawBall(position,20,bw,bh)
+		
+		//重绘画布
+		for(i=0;i<row;i++){
+			for(j=0;j<col;j++){
+				var d=dataArr[i][j]
+				setDataPixels(oImg,i,j,new Array(d,d,d,255))					
+			}
+		}
+		//dataArr=null;
+	}
+	//数组间非引用传递赋值
+	function concatArr(arr1,arr2,r,c){
+		for(var i=0;i<r;i++){
+			for(var j=0;j<c;j++){
+				arr1[i][j]=arr2[i][j]		
+			}
+		}
+	}
+	//获取某行某列的像素值
+	function getDataPixels(oImg,row,col){
+		
+		var arr=[];
+		var w=oImg.width
+		var i=(row*w+col)*4
+		arr[0]=oImg.data[i]//r红0-255
+		arr[1]=oImg.data[i+1]//g绿0-255
+		arr[2]=oImg.data[i+2]//b蓝0-255
+		arr[3]=oImg.data[i+3]//alpha透明度0-255，255不透明0，全透明
+		return arr
+	}
+	//设置某行某列的像素值
+	function setDataPixels(oImg,row,col,arr){
+		//alert(arr)
+		var w=oImg.width
+		var i=(row*w+col)*4
+		oImg.data[i]=arr[0]
+		oImg.data[i+1]=arr[1]
+		oImg.data[i+2]=arr[2]
+		oImg.data[i+3]=arr[3]	
+	}
+	
+
+</script>
+</html>
